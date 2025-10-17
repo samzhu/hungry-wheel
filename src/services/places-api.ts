@@ -129,8 +129,8 @@ export const searchNearbyRestaurants = async (
     // 轉換為自定義的 Restaurant 類型，並過濾掉已關閉的店家
     const restaurants: Restaurant[] = places
       .filter((place) => {
-        // 必須有 ID 和名稱
-        if (!place.id || !place.displayName) return false
+        // 必須有 ID、名稱和位置
+        if (!place.id || !place.displayName || !place.location) return false
 
         // 過濾掉已關閉的店家
         // businessStatus 可能的值：OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY
@@ -146,22 +146,24 @@ export const searchNearbyRestaurants = async (
         id: place.id!,
         name: place.displayName || '未命名餐廳',
         address: place.formattedAddress || '地址未提供',
-        rating: place.rating,
-        userRatingsTotal: place.userRatingCount,
+        rating: place.rating ?? undefined, // 將 null 轉換為 undefined
+        userRatingsTotal: place.userRatingCount ?? undefined, // 將 null 轉換為 undefined
         photos: place.photos?.map((photo) =>
           photo.getURI({ maxWidth: 400 })
         ),
-        location: place.location ? {
-          lat: place.location.lat(),
-          lng: place.location.lng(),
-        } : undefined,
+        location: {
+          lat: place.location!.lat(),
+          lng: place.location!.lng(),
+        },
         types: place.types,
         openingHours: place.regularOpeningHours
           ? {
-              openNow: place.regularOpeningHours.isOpen?.() || undefined,
+              openNow: undefined, // regularOpeningHours 沒有即時的 isOpen 狀態
             }
           : undefined,
-        priceLevel: place.priceLevel,
+        priceLevel: place.priceLevel !== null && place.priceLevel !== undefined
+          ? Number(place.priceLevel)
+          : undefined, // 將 PriceLevel 枚舉轉換為數字
       }))
 
     console.log(`🍽️ 過濾後剩餘 ${restaurants.length} 家營業中的餐廳`)
