@@ -1,0 +1,280 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.app-header {
+  text-align: center;
+  color: white;
+  margin-bottom: 2rem;
+}
+
+.app-header h1 {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.app-header p {
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 800px;
+}
+
+.status-container {
+  margin-bottom: 2rem;
+}
+
+.status {
+  font-size: 1.5rem;
+  color: white;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 1rem 2rem;
+  border-radius: 50px;
+  backdrop-filter: blur(10px);
+}
+
+.wheel-container {
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 1;
+  margin-bottom: 2rem;
+}
+
+.wheel-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 3px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  color: white;
+  font-size: 1.5rem;
+}
+
+.draw-button {
+  font-size: 1.5rem;
+  padding: 1rem 3rem;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.draw-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+.draw-button:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.app-footer {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  margin-top: 2rem;
+}
+
+/* 載入餐廳狀態 */
+.loading-restaurants {
+  text-align: center;
+  padding: 3rem;
+  color: white;
+}
+
+.loading-restaurants .spinner {
+  width: 50px;
+  height: 50px;
+  margin: 0 auto 1.5rem;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-restaurants p {
+  font-size: 1.2rem;
+}
+
+/* 錯誤訊息 */
+.error-message {
+  background: rgba(255, 240, 240, 0.95);
+  padding: 2rem;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 500px;
+}
+
+.error-message p {
+  color: #dc2626;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.error-hint {
+  font-size: 0.9rem !important;
+  color: #999 !important;
+}
+
+/* 餐廳預覽 */
+.restaurants-preview {
+  width: 100%;
+  max-width: 1200px;
+  margin-top: 3rem;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 2rem;
+  border-radius: 20px;
+}
+
+.restaurants-preview h3 {
+  text-align: center;
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+.restaurants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+/* 無結果狀態 */
+.no-results {
+  text-align: center;
+  padding: 3rem;
+  color: white;
+  font-size: 1.2rem;
+}
+
+.no-results p {
+  margin-bottom: 0.5rem;
+}
+
+/* 抽籤結果 */
+.result-container {
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+}
+
+.result-title {
+  font-size: 2.5rem;
+  color: white;
+  margin-bottom: 2rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-card {
+  animation: scaleIn 0.5s ease-out 0.2s both;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.retry-draw-button {
+  margin-top: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2.5rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.retry-draw-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.retry-draw-button:active {
+  transform: translateY(0);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .app {
+    padding: 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 2rem;
+  }
+
+  .app-header p {
+    font-size: 1rem;
+  }
+
+  .status {
+    font-size: 1.2rem;
+    padding: 0.75rem 1.5rem;
+  }
+
+  .draw-button {
+    font-size: 1.2rem;
+    padding: 0.75rem 2rem;
+  }
+
+  .restaurants-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .restaurants-preview {
+    padding: 1rem;
+  }
+}
