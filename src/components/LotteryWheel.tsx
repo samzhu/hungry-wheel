@@ -22,7 +22,7 @@ enum DrawPhase {
 }
 
 /**
- * 籤條 3D 卡片組件（垂直籤支，像真實的竹籤）
+ * 籤條組件（扁平竹片，像真實的籤詩）
  */
 function LotteryStick({
   restaurant,
@@ -42,7 +42,7 @@ function LotteryStick({
     if (groupRef.current && hovered && phase === DrawPhase.IDLE) {
       groupRef.current.position.y = THREE.MathUtils.lerp(
         groupRef.current.position.y,
-        position[1] + 0.2,
+        position[1] + 0.3,
         0.1
       )
     } else if (groupRef.current && !isSelected) {
@@ -54,8 +54,8 @@ function LotteryStick({
     }
   })
 
-  // 籤支顏色：選中為金色，hover 為粉紅，默認為木色
-  const stickColor = isSelected ? '#fbbf24' : (hovered && phase === DrawPhase.IDLE ? '#f093fb' : '#d4a574')
+  // 籤支顏色：選中為金黃，hover 為淺黃，默認為竹色
+  const stickColor = isSelected ? '#d4af37' : (hovered && phase === DrawPhase.IDLE ? '#e8d5a0' : '#d2b48c')
 
   return (
     <group
@@ -64,37 +64,60 @@ function LotteryStick({
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
-      {/* 籤支主體（細長圓柱，像竹籤） */}
-      <mesh>
-        <cylinderGeometry args={[0.02, 0.02, 3, 8]} />
+      {/* 籤支主體（扁平竹片） */}
+      <mesh castShadow>
+        <boxGeometry args={[0.12, 2.5, 0.015]} />
         <meshStandardMaterial
           color={stickColor}
-          metalness={0.1}
-          roughness={0.6}
+          metalness={0}
+          roughness={0.7}
         />
       </mesh>
 
-      {/* 籤支頂部標記（小球） */}
-      <mesh position={[0, 1.5, 0]}>
-        <sphereGeometry args={[0.05, 8, 8]} />
+      {/* 籤支頂部圓角 */}
+      <mesh position={[0, 1.25, 0]} castShadow>
+        <sphereGeometry args={[0.06, 12, 12]} />
         <meshStandardMaterial
-          color={isSelected ? '#ef4444' : '#8b4513'}
-          metalness={0.3}
-          roughness={0.5}
+          color={stickColor}
+          metalness={0}
+          roughness={0.7}
         />
       </mesh>
 
-      {/* 餐廳名稱（只在選中時顯示） */}
+      {/* 紅色標記點（在頂部） */}
+      {isSelected && (
+        <mesh position={[0, 1.1, 0.01]}>
+          <circleGeometry args={[0.04, 16]} />
+          <meshStandardMaterial
+            color="#dc2626"
+            metalness={0.2}
+            roughness={0.4}
+          />
+        </mesh>
+      )}
+
+      {/* 號碼文字（在籤片上） */}
+      <Text
+        position={[0, 0.3, 0.01]}
+        fontSize={0.15}
+        color={isSelected ? '#dc2626' : '#8b4513'}
+        anchorX="center"
+        anchorY="middle"
+      >
+        {restaurant.name.substring(0, 2)}
+      </Text>
+
+      {/* 餐廳名稱（選中時顯示在旁邊） */}
       {isSelected && phase !== DrawPhase.IDLE && (
         <Text
-          position={[0, 2, 0]}
-          fontSize={0.15}
-          color="#ffffff"
+          position={[0, 2.2, 0]}
+          fontSize={0.2}
+          color="#ffd700"
           anchorX="center"
           anchorY="middle"
-          maxWidth={2}
-          outlineWidth={0.02}
-          outlineColor="#000000"
+          maxWidth={2.5}
+          outlineWidth={0.03}
+          outlineColor="#8b4513"
         >
           {restaurant.name}
         </Text>
@@ -211,48 +234,65 @@ function LotteryContainer({
     }
   })
 
-  const cylinderRadius = 1.2
-  const cylinderHeight = 3
+  const cylinderRadius = 1.3
+  const cylinderHeight = 3.2
+  const segments = 6 // 六角形
 
   // 將籤支排列在籤筒內（隨機分佈）
   const sticksPositions = restaurants.map((_, index) => {
     const angle = (Math.PI * 2 * index) / restaurants.length + Math.random() * 0.5
-    const radius = Math.random() * (cylinderRadius - 0.3)
+    const radius = Math.random() * (cylinderRadius - 0.4)
     return [
       Math.cos(angle) * radius,
-      -cylinderHeight / 2 + 0.5, // 在籤筒底部
+      -cylinderHeight / 2 + 0.8, // 在籤筒底部
       Math.sin(angle) * radius
     ] as [number, number, number]
   })
 
   return (
     <group ref={containerRef}>
-      {/* 籤筒主體 */}
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[cylinderRadius, cylinderRadius * 0.9, cylinderHeight, 32, 1, true]} />
+      {/* 籤筒主體（六角形竹筒） */}
+      <mesh position={[0, 0, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[cylinderRadius, cylinderRadius * 0.95, cylinderHeight, segments, 1, true]} />
         <meshStandardMaterial
-          color="#8b4513"
-          metalness={0.1}
-          roughness={0.8}
+          color="#a67c52"
+          metalness={0}
+          roughness={0.85}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      {/* 籤筒底部 */}
-      <mesh position={[0, -cylinderHeight / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[cylinderRadius * 0.9, 32]} />
-        <meshStandardMaterial color="#654321" metalness={0.1} roughness={0.9} />
+      {/* 籤筒底部（六角形） */}
+      <mesh position={[0, -cylinderHeight / 2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <cylinderGeometry args={[cylinderRadius * 0.95, cylinderRadius * 0.95, 0.1, segments]} />
+        <meshStandardMaterial color="#8b6f47" metalness={0} roughness={0.9} />
       </mesh>
 
-      {/* 籤筒裝飾環 */}
-      <mesh position={[0, cylinderHeight / 2 - 0.2, 0]}>
-        <cylinderGeometry args={[cylinderRadius + 0.05, cylinderRadius + 0.05, 0.15, 32]} />
-        <meshStandardMaterial color="#d4af37" metalness={0.8} roughness={0.2} />
+      {/* 頂部金色裝飾環 */}
+      <mesh position={[0, cylinderHeight / 2 - 0.15, 0]} castShadow>
+        <cylinderGeometry args={[cylinderRadius + 0.08, cylinderRadius + 0.08, 0.2, segments]} />
+        <meshStandardMaterial color="#d4af37" metalness={0.7} roughness={0.25} />
       </mesh>
-      <mesh position={[0, -cylinderHeight / 2 + 0.2, 0]}>
-        <cylinderGeometry args={[cylinderRadius, cylinderRadius, 0.15, 32]} />
-        <meshStandardMaterial color="#d4af37" metalness={0.8} roughness={0.2} />
+
+      {/* 頂部紅色裝飾線 */}
+      <mesh position={[0, cylinderHeight / 2 - 0.3, 0]}>
+        <cylinderGeometry args={[cylinderRadius + 0.02, cylinderRadius + 0.02, 0.08, segments]} />
+        <meshStandardMaterial color="#dc2626" metalness={0.4} roughness={0.3} />
       </mesh>
+
+      {/* 底部金色裝飾環 */}
+      <mesh position={[0, -cylinderHeight / 2 + 0.15, 0]} castShadow>
+        <cylinderGeometry args={[cylinderRadius * 0.98, cylinderRadius * 0.98, 0.2, segments]} />
+        <meshStandardMaterial color="#d4af37" metalness={0.7} roughness={0.25} />
+      </mesh>
+
+      {/* 竹節紋理（3個） */}
+      {[0.8, 0, -0.8].map((y, i) => (
+        <mesh key={i} position={[0, y, 0]}>
+          <cylinderGeometry args={[cylinderRadius + 0.015, cylinderRadius + 0.015, 0.05, segments]} />
+          <meshStandardMaterial color="#8b6f47" metalness={0} roughness={0.8} />
+        </mesh>
+      ))}
 
       {/* 所有籤支 */}
       {restaurants.map((restaurant, index) => {
@@ -292,26 +332,29 @@ function Scene({
 }) {
   return (
     <>
-      {/* 環境光 */}
-      <ambientLight intensity={0.6} />
+      {/* 環境光（暖色調） */}
+      <ambientLight intensity={0.7} color="#fff5e6" />
 
-      {/* 主光源 */}
-      <directionalLight position={[5, 8, 5]} intensity={1.2} castShadow />
-      <directionalLight position={[-5, 3, -5]} intensity={0.4} />
+      {/* 主光源（模擬天光） */}
+      <directionalLight position={[4, 10, 6]} intensity={1.5} castShadow color="#fffaf0" />
+      <directionalLight position={[-4, 5, -6]} intensity={0.6} color="#ffd7a3" />
 
-      {/* 頂部聚光燈（照亮籤筒） */}
+      {/* 頂部聚光燈（照亮籤筒，神聖感） */}
       <spotLight
-        position={[0, 8, 0]}
-        angle={0.6}
-        penumbra={0.5}
-        intensity={1.5}
+        position={[0, 10, 0]}
+        angle={0.5}
+        penumbra={0.6}
+        intensity={2}
         castShadow
         color="#fff8dc"
       />
 
-      {/* 氛圍點光源 */}
-      <pointLight position={[3, 2, 3]} intensity={0.5} color="#f093fb" />
-      <pointLight position={[-3, 2, -3]} intensity={0.5} color="#667eea" />
+      {/* 氛圍點光源（紅色燈籠效果） */}
+      <pointLight position={[3, 3, 3]} intensity={0.8} color="#ff6b6b" />
+      <pointLight position={[-3, 3, -3]} intensity={0.8} color="#ff6b6b" />
+
+      {/* 後方補光（金色氛圍） */}
+      <pointLight position={[0, 2, -5]} intensity={0.5} color="#ffd700" />
 
       {/* 籤筒容器（包含所有籤支） */}
       <LotteryContainer
@@ -321,33 +364,37 @@ function Scene({
         onPhaseComplete={onPhaseComplete}
       />
 
-      {/* 地面反射 */}
+      {/* 地面（深色木質地板） */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.5, 0]} receiveShadow>
-        <planeGeometry args={[20, 20]} />
+        <planeGeometry args={[25, 25]} />
         <MeshReflectorMaterial
-          blur={[300, 100]}
+          blur={[400, 100]}
           resolution={2048}
-          mixBlur={1}
-          mixStrength={30}
-          roughness={1}
-          depthScale={1.2}
+          mixBlur={1.2}
+          mixStrength={40}
+          roughness={0.9}
+          depthScale={1.1}
           minDepthThreshold={0.4}
           maxDepthThreshold={1.4}
-          color="#1a1a2e"
-          metalness={0.5}
+          color="#2d2416"
+          metalness={0.3}
         />
       </mesh>
 
-      {/* 環境貼圖 */}
+      {/* 環境貼圖（日落氛圍） */}
       <Environment preset="sunset" />
+
+      {/* 霧氣效果 */}
+      <fog attach="fog" args={['#1a1410', 10, 25]} />
 
       {/* 滑鼠控制 */}
       <OrbitControls
         enablePan={false}
         enableZoom={true}
-        minDistance={4}
-        maxDistance={12}
+        minDistance={5}
+        maxDistance={15}
         maxPolarAngle={Math.PI / 2.2}
+        minPolarAngle={Math.PI / 6}
         enabled={phase === DrawPhase.IDLE} // 抽籤時禁用控制
       />
     </>
