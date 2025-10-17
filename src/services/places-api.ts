@@ -18,30 +18,41 @@ export const initGoogleMapsAPI = async (): Promise<void> => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
   if (!apiKey) {
-    throw new Error(
-      '請在 .env 文件中設定 VITE_GOOGLE_MAPS_API_KEY 環境變數'
-    )
+    const isDevelopment = import.meta.env.DEV
+    const errorMessage = isDevelopment
+      ? 'Google Maps API 金鑰未設定。請在 .env 文件中設定 VITE_GOOGLE_MAPS_API_KEY'
+      : 'Google Maps API 金鑰未設定。請聯繫網站管理員。'
+
+    throw new Error(errorMessage)
   }
 
   if (isInitialized) {
     return // 已經初始化
   }
 
-  // 設定 API 選項
-  setOptions({
-    key: apiKey,
-    v: 'weekly',
-    libraries: ['places'],
-  })
+  try {
+    // 設定 API 選項
+    setOptions({
+      key: apiKey,
+      v: 'weekly',
+      libraries: ['places'],
+    })
 
-  // 載入 Places Library
-  await importLibrary('places')
+    // 載入 Places Library
+    await importLibrary('places')
 
-  isInitialized = true
+    isInitialized = true
 
-  // 創建一個隱藏的 div 來初始化 PlacesService
-  const div = document.createElement('div')
-  placesService = new google.maps.places.PlacesService(div)
+    // 創建一個隱藏的 div 來初始化 PlacesService
+    const div = document.createElement('div')
+    placesService = new google.maps.places.PlacesService(div)
+  } catch (error) {
+    isInitialized = false
+    throw new PlacesAPIError(
+      'INIT_FAILED',
+      `Google Maps API 載入失敗：${error instanceof Error ? error.message : '未知錯誤'}`
+    )
+  }
 }
 
 /**

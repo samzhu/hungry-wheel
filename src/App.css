@@ -134,17 +134,63 @@
   border-radius: 16px;
   text-align: center;
   max-width: 500px;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.1);
 }
 
-.error-message p {
+.error-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.error-title {
   color: #dc2626;
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
 }
 
-.error-hint {
-  font-size: 0.9rem !important;
-  color: #999 !important;
+.error-text {
+  color: #991b1b;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.error-dev-hint {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  text-align: left;
+  border: 1px dashed #fca5a5;
+}
+
+.error-dev-hint p {
+  color: #7c2d12;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.error-dev-hint ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.error-dev-hint li {
+  color: #9a3412;
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.error-dev-hint li::before {
+  content: "→";
+  position: absolute;
+  left: 0.5rem;
+  color: #fb923c;
 }
 
 /* 餐廳預覽 */

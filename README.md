@@ -85,11 +85,26 @@ VITE_GOOGLE_MAPS_API_KEY=your_api_key_here
 
 ### 如何取得 Google Maps API 金鑰
 
+📖 **完整圖文教學**：
+- 🎓 **[API_KEY_TUTORIAL.md](./API_KEY_TUTORIAL.md)** - 超詳細步驟指南（推薦新手）
+- 📚 **[GET_API_KEY.md](./GET_API_KEY.md)** - 完整說明文檔
+
+**快速 5 步驟**：
 1. 前往 [Google Cloud Console](https://console.cloud.google.com/)
-2. 建立新專案或選擇現有專案
+2. 建立新專案：`Hungry Wheel`
 3. 啟用 **Places API**
-4. 建立憑證 (API Key)
-5. 將 API Key 複製到 `.env` 文件中
+4. 建立憑證 → **API 金鑰** → 複製金鑰
+5. 加入 `.env` 文件：`VITE_GOOGLE_MAPS_API_KEY=你的金鑰`
+
+💡 **提示**：Google Maps Platform 提供每月免費額度，一般個人使用不會產生費用。
+
+💰 **詳細免費方案說明**：請參閱 [FREE_TIER_INFO.md](./FREE_TIER_INFO.md)
+
+**快速摘要：**
+- 🎁 新用戶：$300 USD 試用額度（90天）
+- 🆓 每月免費：10,000 次 API 呼叫
+- ✅ 個人專案：完全免費（< 10,000 使用者/月）
+- 💵 超額費用：$32 / 1,000 次（有自動折扣）
 
 ## 🗂️ 專案結構
 

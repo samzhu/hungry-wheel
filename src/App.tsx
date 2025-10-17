@@ -51,10 +51,19 @@ function App() {
 
             {error && (
               <div className="error-message">
-                <p>⚠️ {error.message}</p>
-                <p className="error-hint">
-                  請確認已在 .env 文件中設定 VITE_GOOGLE_MAPS_API_KEY
-                </p>
+                <div className="error-icon">⚠️</div>
+                <h3 className="error-title">無法載入餐廳資料</h3>
+                <p className="error-text">{error.message}</p>
+                {import.meta.env.DEV && (
+                  <div className="error-dev-hint">
+                    <p>開發提示：</p>
+                    <ul>
+                      <li>確認已建立 .env 文件</li>
+                      <li>設定 VITE_GOOGLE_MAPS_API_KEY</li>
+                      <li>重新啟動開發伺服器</li>
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
 
