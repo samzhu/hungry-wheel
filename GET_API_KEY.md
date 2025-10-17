@@ -19,19 +19,26 @@
 4. 點擊「建立」
 5. 等待專案建立完成（約 10-30 秒）
 
-## 🔌 步驟 2：啟用 Places API
+## 🔌 步驟 2：啟用 Places API (New)
+
+⚠️ **重要更新（2025 年 3 月）**：新客戶必須使用 **Places API (New)**
 
 ### 2.1 前往 API 程式庫
 
 1. 在左側選單選擇「API 和服務」>「程式庫」
 2. 或直接訪問：https://console.cloud.google.com/apis/library
 
-### 2.2 搜尋並啟用 Places API
+### 2.2 搜尋並啟用 Places API (New)
 
 1. 在搜尋框輸入：`Places API`
-2. 點擊「Places API」（注意不是 Places API (New)）
+2. **點擊「Places API (New)」**（必須是新版！）
 3. 點擊「啟用」按鈕
 4. 等待啟用完成
+
+💡 **為什麼使用新版？**
+- 舊版 Places API 已對新客戶停用（2025 年 3 月起）
+- 新版 API 提供更好的效能和更多功能
+- 支援更準確的搜尋結果和更快的回應時間
 
 ## 🔑 步驟 3：建立 API 金鑰
 
@@ -83,9 +90,11 @@ AIzaSyC1234567890abcdefghijklmnopqrstu
 1. 在「API 限制」區段
 2. 選擇「限制金鑰」
 3. 勾選：
-   - ✅ Places API
-   - ✅ Maps JavaScript API（如果需要）
+   - ✅ **Places API (New)** ← 必須是新版！
+   - ✅ Maps JavaScript API（可選）
 4. 點擊「儲存」
+
+⚠️ **重要**：確保勾選的是 "Places API (New)"，而不是舊的 "Places API"
 
 ## 💰 步驟 5：了解定價與免費額度
 

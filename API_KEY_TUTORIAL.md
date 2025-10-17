@@ -46,7 +46,9 @@
 
 ---
 
-### 🔌 步驟 3：啟用 Places API
+### 🔌 步驟 3：啟用 Places API (New)
+
+⚠️ **重要**：自 2025 年 3 月起，新客戶必須使用 **Places API (New)**
 
 #### 3.1 前往 API 程式庫
 
@@ -60,18 +62,19 @@
 https://console.cloud.google.com/apis/library
 ```
 
-#### 3.2 搜尋 Places API
+#### 3.2 搜尋並啟用 Places API (New)
 
 1. 在頁面頂部的搜尋框輸入：
    ```
    Places API
    ```
 
-2. 在搜尋結果中找到 **"Places API"**
-   - ⚠️ 注意：不是 "Places API (New)"
-   - 圖示：📍 紅色地標圖示
+2. **重要！** 在搜尋結果中找到 **"Places API (New)"**
+   - ✅ 必須選擇 **"Places API (New)"**
+   - ❌ 不要選舊的 "Places API"
+   - 圖示：📍 新版 API 標誌
 
-3. 點擊進入 Places API 頁面
+3. 點擊進入 Places API (New) 頁面
 
 #### 3.3 啟用 API
 
@@ -82,6 +85,11 @@ https://console.cloud.google.com/apis/library
 3. 頁面會跳轉到 API 詳情頁面
 
 ✅ **確認**：頁面頂部顯示 "API 已啟用"
+
+💡 **提示**：
+- 新版 API 更快、更穩定
+- 支援更多功能和更好的錯誤處理
+- 舊版 API 已於 2025 年 3 月對新客戶停用
 
 ---
 
@@ -181,10 +189,12 @@ https://console.cloud.google.com/apis/credentials
 1. 選擇 **「限制金鑰」**
 
 2. 在下拉選單中勾選：
-   - ✅ **Places API**
-   - ✅ Maps JavaScript API（如果需要）
+   - ✅ **Places API (New)** ← 重要！必須是新版
+   - ✅ Maps JavaScript API（可選）
 
 3. 點擊 **「確定」**
+
+⚠️ **注意**：確保選擇的是 **"Places API (New)"**，而不是舊的 "Places API"
 
 #### 5.4 儲存設定
 

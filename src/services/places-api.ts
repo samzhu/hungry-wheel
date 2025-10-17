@@ -7,9 +7,9 @@ import { Coordinates, Restaurant } from '../types/restaurant'
 let isInitialized = false
 
 /**
- * Places Service 實例
+ * Places Library 實例
  */
-let placesService: google.maps.places.PlacesService | null = null
+let placesLibrary: typeof google.maps.places | null = null
 
 /**
  * 初始化 Google Maps API
@@ -38,14 +38,11 @@ export const initGoogleMapsAPI = async (): Promise<void> => {
       libraries: ['places'],
     })
 
-    // 載入 Places Library
-    await importLibrary('places')
+    // 載入 Places Library（新版 API）
+    placesLibrary = await importLibrary('places') as typeof google.maps.places
 
     isInitialized = true
-
-    // 創建一個隱藏的 div 來初始化 PlacesService
-    const div = document.createElement('div')
-    placesService = new google.maps.places.PlacesService(div)
+    console.log('✅ Google Maps Places API (New) 初始化成功')
   } catch (error) {
     isInitialized = false
     throw new PlacesAPIError(
@@ -69,129 +66,144 @@ export class PlacesAPIError extends Error {
 }
 
 /**
- * 搜尋附近餐廳（使用 Places API）
+ * 搜尋附近餐廳（使用新版 Places API）
  */
 export const searchNearbyRestaurants = async (
   location: Coordinates,
   radius: number = 1500 // 預設 1.5 公里
 ): Promise<Restaurant[]> => {
   // 確保 API 已初始化
-  if (!placesService) {
+  if (!placesLibrary) {
     await initGoogleMapsAPI()
   }
 
-  if (!placesService) {
+  if (!placesLibrary) {
     throw new PlacesAPIError('INIT_FAILED', 'Places API 初始化失敗')
   }
 
-  return new Promise((resolve, reject) => {
-    const request: google.maps.places.PlaceSearchRequest = {
-      location: new google.maps.LatLng(location.latitude, location.longitude),
-      radius,
-      type: 'restaurant',
+  try {
+    console.log(`🔍 搜尋餐廳：位置 (${location.latitude}, ${location.longitude})，半徑 ${radius}m`)
+
+    const center = new google.maps.LatLng(location.latitude, location.longitude)
+
+    // 使用新版 Places API 的 searchNearby 方法
+    const request = {
+      // 必填參數：指定要返回的欄位
+      fields: [
+        'displayName',
+        'location',
+        'id',
+        'formattedAddress',
+        'rating',
+        'userRatingCount',
+        'photos',
+        'types',
+        'businessStatus',
+        'priceLevel',
+        'currentOpeningHours',
+      ],
+      // 位置限制
+      locationRestriction: {
+        center: center,
+        radius: radius,
+      },
+      // 只搜尋餐廳
+      includedPrimaryTypes: ['restaurant'],
+      // 最多返回 20 個結果
+      maxResultCount: 20,
+      // 按照熱門度排序
+      rankPreference: google.maps.places.SearchNearbyRankPreference.POPULARITY,
+      // 語言設定
+      language: 'zh-TW',
+      region: 'TW',
     }
 
-    placesService!.nearbySearch(request, (results, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-        const restaurants: Restaurant[] = results
-          .filter((place) => place.place_id && place.name && place.geometry?.location)
-          .map((place) => ({
-            id: place.place_id!,
-            name: place.name!,
-            address: place.vicinity || '地址未提供',
-            rating: place.rating,
-            userRatingsTotal: place.user_ratings_total,
-            photos: place.photos?.map((photo) =>
-              photo.getUrl({ maxWidth: 400 })
-            ),
-            location: {
-              lat: place.geometry!.location!.lat(),
-              lng: place.geometry!.location!.lng(),
-            },
-            types: place.types,
-            openingHours: place.opening_hours
-              ? {
-                  openNow: place.opening_hours.open_now,
-                }
-              : undefined,
-            priceLevel: place.price_level,
-          }))
+    const { places } = await google.maps.places.Place.searchNearby(request)
 
-        resolve(restaurants)
-      } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-        resolve([]) // 沒有結果
-      } else {
-        reject(
-          new PlacesAPIError(
-            status,
-            `搜尋餐廳失敗：${getStatusMessage(status)}`
-          )
-        )
-      }
-    })
-  })
-}
+    console.log(`✅ 找到 ${places.length} 家餐廳`)
 
-/**
- * 取得 Places API 狀態訊息
- */
-const getStatusMessage = (status: google.maps.places.PlacesServiceStatus): string => {
-  switch (status) {
-    case google.maps.places.PlacesServiceStatus.INVALID_REQUEST:
-      return '無效的請求'
-    case google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT:
-      return '超過查詢限制'
-    case google.maps.places.PlacesServiceStatus.REQUEST_DENIED:
-      return '請求被拒絕，請檢查 API 金鑰'
-    case google.maps.places.PlacesServiceStatus.UNKNOWN_ERROR:
-      return '未知錯誤，請稍後再試'
-    default:
-      return '發生錯誤'
+    if (!places || places.length === 0) {
+      return []
+    }
+
+    // 轉換為自定義的 Restaurant 類型
+    const restaurants: Restaurant[] = places
+      .filter((place) => place.id && place.displayName)
+      .map((place) => ({
+        id: place.id!,
+        name: place.displayName || '未命名餐廳',
+        address: place.formattedAddress || '地址未提供',
+        rating: place.rating,
+        userRatingsTotal: place.userRatingCount,
+        photos: place.photos?.map((photo) =>
+          photo.getURI({ maxWidth: 400 })
+        ),
+        location: place.location ? {
+          lat: place.location.lat(),
+          lng: place.location.lng(),
+        } : undefined,
+        types: place.types,
+        openingHours: place.currentOpeningHours
+          ? {
+              openNow: place.currentOpeningHours.isOpen?.() || undefined,
+            }
+          : undefined,
+        priceLevel: place.priceLevel,
+      }))
+
+    return restaurants
+  } catch (error) {
+    console.error('❌ 搜尋餐廳失敗：', error)
+    throw new PlacesAPIError(
+      'SEARCH_FAILED',
+      `搜尋餐廳失敗：${error instanceof Error ? error.message : '未知錯誤'}`
+    )
   }
 }
 
 /**
- * 取得餐廳詳細資訊
+ * 取得餐廳詳細資訊（使用新版 Places API）
+ * 注意：在新版 API 中，searchNearby 已經返回了大部分資料，
+ * 此函數主要用於需要額外詳細資訊時使用
  */
 export const getPlaceDetails = async (
   placeId: string
-): Promise<google.maps.places.PlaceResult> => {
-  if (!placesService) {
+): Promise<any> => {
+  if (!placesLibrary) {
     await initGoogleMapsAPI()
   }
 
-  if (!placesService) {
+  if (!placesLibrary) {
     throw new PlacesAPIError('INIT_FAILED', 'Places API 初始化失敗')
   }
 
-  return new Promise((resolve, reject) => {
-    const request: google.maps.places.PlaceDetailsRequest = {
-      placeId,
+  try {
+    const place = new google.maps.places.Place({
+      id: placeId,
+    })
+
+    // 請求額外的詳細資訊
+    await place.fetchFields({
       fields: [
-        'name',
-        'formatted_address',
-        'formatted_phone_number',
+        'displayName',
+        'formattedAddress',
+        'nationalPhoneNumber',
         'rating',
-        'user_ratings_total',
-        'opening_hours',
+        'userRatingCount',
+        'currentOpeningHours',
         'photos',
-        'price_level',
-        'website',
+        'priceLevel',
+        'websiteURI',
         'reviews',
       ],
-    }
-
-    placesService!.getDetails(request, (place, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.OK && place) {
-        resolve(place)
-      } else {
-        reject(
-          new PlacesAPIError(
-            status,
-            `取得餐廳詳細資訊失敗：${getStatusMessage(status)}`
-          )
-        )
-      }
     })
-  })
+
+    return place
+  } catch (error) {
+    console.error('❌ 取得餐廳詳細資訊失敗：', error)
+    throw new PlacesAPIError(
+      'DETAILS_FAILED',
+      `取得餐廳詳細資訊失敗：${error instanceof Error ? error.message : '未知錯誤'}`
+    )
+  }
 }
