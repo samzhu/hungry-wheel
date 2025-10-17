@@ -57,7 +57,6 @@ function LotteryStick({
         anchorX="center"
         anchorY="middle"
         maxWidth={1.8}
-        font="/fonts/inter.woff"
       >
         {restaurant.name}
       </Text>
@@ -113,29 +112,36 @@ function RotatingSticks({
 }) {
   const groupRef = useRef<THREE.Group>(null)
   const rotationSpeed = useRef(0.2)
-  const targetRotation = useRef(0)
+  const animationData = useRef({ speed: 0.2 })
 
   useEffect(() => {
     if (isSpinning && groupRef.current) {
-      // 使用 GSAP 創建加速和減速動畫
-      const currentRotation = groupRef.current.rotation.y
+      console.log('🎲 開始抽籤動畫')
 
-      // 計算目標旋轉角度（3-5 圈 + 隨機角度）
-      const spins = 3 + Math.random() * 2
-      const finalRotation = currentRotation + Math.PI * 2 * spins + Math.random() * Math.PI * 2
+      // 重置速度
+      animationData.current.speed = 0.2
+      rotationSpeed.current = 0.2
 
       // GSAP 動畫：先加速再減速
-      gsap.to(rotationSpeed, {
-        current: 10, // 加速到最快
+      gsap.to(animationData.current, {
+        speed: 10, // 加速到最快
         duration: 0.5,
         ease: 'power2.in',
+        onUpdate: () => {
+          rotationSpeed.current = animationData.current.speed
+        },
         onComplete: () => {
+          console.log('⚡ 加速完成，開始減速')
           // 然後減速
-          gsap.to(rotationSpeed, {
-            current: 0,
+          gsap.to(animationData.current, {
+            speed: 0,
             duration: 2.5,
             ease: 'power4.out',
+            onUpdate: () => {
+              rotationSpeed.current = animationData.current.speed
+            },
             onComplete: () => {
+              console.log('✅ 動畫完成')
               if (onSpinComplete) {
                 onSpinComplete()
               }
@@ -143,8 +149,6 @@ function RotatingSticks({
           })
         }
       })
-
-      targetRotation.current = finalRotation
     }
   }, [isSpinning, onSpinComplete])
 

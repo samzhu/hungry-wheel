@@ -6,9 +6,11 @@
 
 - 🎯 **智慧定位**：自動取得使用者位置，搜尋附近餐廳
 - 🎨 **3D 視覺效果**：使用 Three.js 打造半 3D 抽籤輪盤
-- 🎭 **流暢動畫**：GSAP 驅動的物理動畫效果
+- 🎭 **流暢動畫**：GSAP 驅動的物理動畫效果（加速 → 減速）
 - 📱 **響應式設計**：完美支援桌面與行動裝置
 - 🗺️ **Google Maps 整合**：使用最新 Places API (New) 取得餐廳資訊
+- 🏪 **智慧過濾**：自動排除已關閉的店家，只顯示營業中的餐廳
+- 🌐 **自訂網域**：支援 GitHub Pages 自訂網域部署
 
 ## 🚀 技術棧
 
@@ -21,7 +23,7 @@
 - **GSAP 3.13** - 專業動畫庫
 - **Tailwind CSS 4.1** - 現代化 CSS 框架
 - **Framer Motion** - React 動畫庫
-- **Google Maps Places API** - 地圖與餐廳資料
+- **Google Maps Places API (New)** - 最新版地圖與餐廳資料 API
 
 ## 📦 安裝
 
@@ -85,6 +87,8 @@ VITE_GOOGLE_MAPS_API_KEY=your_api_key_here
 
 ### 如何取得 Google Maps API 金鑰
 
+⚠️ **重要**：本專案使用 **Places API (New)**（2025 年 3 月起新客戶必須使用新版 API）
+
 📖 **完整圖文教學**：
 - 🎓 **[API_KEY_TUTORIAL.md](./API_KEY_TUTORIAL.md)** - 超詳細步驟指南（推薦新手）
 - 📚 **[GET_API_KEY.md](./GET_API_KEY.md)** - 完整說明文檔
@@ -92,9 +96,14 @@ VITE_GOOGLE_MAPS_API_KEY=your_api_key_here
 **快速 5 步驟**：
 1. 前往 [Google Cloud Console](https://console.cloud.google.com/)
 2. 建立新專案：`Hungry Wheel`
-3. 啟用 **Places API**
-4. 建立憑證 → **API 金鑰** → 複製金鑰
+3. 啟用 **Places API (New)** ← 注意必須是新版！
+4. 建立憑證 → **API 金鑰** → 設定限制 → 複製金鑰
 5. 加入 `.env` 文件：`VITE_GOOGLE_MAPS_API_KEY=你的金鑰`
+
+💡 **安全提示**：
+- 務必設定 HTTP Referrer 限制（Website Restrictions）
+- 只啟用必要的 API（Places API (New) + Maps JavaScript API）
+- 定期檢查使用量，避免超額費用
 
 💡 **提示**：Google Maps Platform 提供每月免費額度，一般個人使用不會產生費用。
 
@@ -130,19 +139,21 @@ MIT License
 ### 核心功能
 
 1. **智慧定位** - 自動偵測使用者位置
-2. **餐廳搜尋** - 使用 Google Places API 搜尋附近 1.5 公里內的餐廳
-3. **3D 抽籤輪盤** - 互動式 3D 籤筒，滑鼠可旋轉視角
-4. **流暢動畫** - GSAP 驅動的加速/減速動畫
-5. **響應式設計** - 完美支援桌面與行動裝置
+2. **餐廳搜尋** - 使用 Google Places API (New) 搜尋附近 1.5 公里內的餐廳
+3. **智慧過濾** - 自動排除已關閉（暫時或永久）的店家
+4. **3D 抽籤輪盤** - 互動式 3D 籤筒，滑鼠可旋轉視角
+5. **流暢動畫** - GSAP 驅動的物理動畫（0.5秒加速 + 2.5秒減速）
+6. **響應式設計** - 完美支援桌面與行動裝置
 
 ### 使用流程
 
 1. 開啟網頁，允許位置存取權限
-2. 系統自動搜尋附近餐廳
-3. 點擊「開始抽籤」按鈕
-4. 3D 籤筒開始旋轉，加速後減速停止
-5. 顯示抽中的餐廳資訊
-6. 可選擇「重新抽籤」
+2. 系統自動搜尋附近餐廳（1.5 公里範圍）
+3. 自動過濾已關閉的店家，只顯示營業中的餐廳
+4. 點擊「開始抽籤」按鈕
+5. 3D 籤筒開始旋轉（0.5秒加速 → 2.5秒減速）
+6. 顯示抽中的餐廳資訊
+7. 可選擇「重新抽籤」繼續玩
 
 ## 🎨 設計特色
 
@@ -170,28 +181,42 @@ MIT License
 - CSS3 過渡效果
 
 ### API 整合
-- Google Maps Places API (New)
-- Geolocation API
-- 錯誤處理與重試機制
+- Google Maps Places API (New) - 使用最新版 `Place.searchNearby()` 方法
+- 支援 `regularOpeningHours`、`businessStatus` 等新欄位
+- 自動過濾已關閉店家（CLOSED_TEMPORARILY、CLOSED_PERMANENTLY）
+- Geolocation API - 瀏覽器原生定位
+- 完善的錯誤處理與重試機制
 
 ## 👨‍💻 開發狀態
 
 ✅ 專案核心功能已完成！
 
 - [x] 專案架構設置（React 19 + Vite + TypeScript）
-- [x] Google Maps Places API 整合
+- [x] Google Maps Places API (New) 整合與遷移
 - [x] 地理定位功能
+- [x] 智慧過濾（自動排除已關閉店家）
 - [x] 3D 籤筒視覺效果（Three.js）
-- [x] 抽籤動畫實作（GSAP）
+- [x] 抽籤動畫實作（GSAP 物理動畫）
 - [x] UI/UX 優化（Tailwind + Framer Motion）
 - [x] 響應式設計
+- [x] 自訂網域支援（GitHub Pages）
 
 ### 未來改進計劃
 
 - [ ] 音效與觸覺反饋（震動 API）
 - [ ] PWA 支援（可安裝到桌面）
 - [ ] 歷史記錄功能
-- [ ] 餐廳篩選（價格、評分、營業中）
-- [ ] 一鍵導航 開啟 googlemap
+- [ ] 進階篩選選項（價格、評分、營業時間）
+- [ ] 一鍵導航（開啟 Google Maps）
 - [ ] 社群分享功能
 - [ ] 深色模式支援
+- [ ] 多語言支援
+
+### 最近更新（2025-10-17）
+
+✨ **重大更新**：
+- ✅ 遷移到 Google Maps Places API (New)
+- ✅ 修復所有已知錯誤（欄位名稱、React 警告、字體載入、動畫）
+- ✅ 新增智慧過濾功能（自動排除已關閉店家）
+- ✅ 添加自訂網域支援
+- ✅ 完善安全設定指南

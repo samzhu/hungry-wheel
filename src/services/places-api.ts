@@ -100,7 +100,7 @@ export const searchNearbyRestaurants = async (
         'types',
         'businessStatus',
         'priceLevel',
-        'currentOpeningHours',
+        'regularOpeningHours', // 正確：使用 regularOpeningHours 而非 currentOpeningHours
       ],
       // 位置限制
       locationRestriction: {
@@ -120,15 +120,28 @@ export const searchNearbyRestaurants = async (
 
     const { places } = await google.maps.places.Place.searchNearby(request)
 
-    console.log(`✅ 找到 ${places.length} 家餐廳`)
+    console.log(`✅ 找到 ${places.length} 家餐廳（含已關閉）`)
 
     if (!places || places.length === 0) {
       return []
     }
 
-    // 轉換為自定義的 Restaurant 類型
+    // 轉換為自定義的 Restaurant 類型，並過濾掉已關閉的店家
     const restaurants: Restaurant[] = places
-      .filter((place) => place.id && place.displayName)
+      .filter((place) => {
+        // 必須有 ID 和名稱
+        if (!place.id || !place.displayName) return false
+
+        // 過濾掉已關閉的店家
+        // businessStatus 可能的值：OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY
+        if (place.businessStatus === 'CLOSED_TEMPORARILY' ||
+            place.businessStatus === 'CLOSED_PERMANENTLY') {
+          console.log(`⏭️ 跳過已關閉的店家：${place.displayName}`)
+          return false
+        }
+
+        return true
+      })
       .map((place) => ({
         id: place.id!,
         name: place.displayName || '未命名餐廳',
@@ -143,13 +156,15 @@ export const searchNearbyRestaurants = async (
           lng: place.location.lng(),
         } : undefined,
         types: place.types,
-        openingHours: place.currentOpeningHours
+        openingHours: place.regularOpeningHours
           ? {
-              openNow: place.currentOpeningHours.isOpen?.() || undefined,
+              openNow: place.regularOpeningHours.isOpen?.() || undefined,
             }
           : undefined,
         priceLevel: place.priceLevel,
       }))
+
+    console.log(`🍽️ 過濾後剩餘 ${restaurants.length} 家營業中的餐廳`)
 
     return restaurants
   } catch (error) {
@@ -190,7 +205,7 @@ export const getPlaceDetails = async (
         'nationalPhoneNumber',
         'rating',
         'userRatingCount',
-        'currentOpeningHours',
+        'regularOpeningHours', // 正確：使用 regularOpeningHours
         'photos',
         'priceLevel',
         'websiteURI',

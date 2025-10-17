@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Coordinates } from '../types/restaurant'
 import { useLocation } from '../hooks/useLocation'
@@ -16,10 +16,12 @@ export const LocationRequest = ({ onLocationGranted }: LocationRequestProps) => 
   const { coordinates, isLoading, error, refetch } = useLocation(false)
   const [hasRequested, setHasRequested] = useState(false)
 
-  // 當成功取得位置時，通知父組件
-  if (coordinates && !error) {
-    onLocationGranted(coordinates)
-  }
+  // 當成功取得位置時，通知父組件（使用 useEffect 避免在渲染期間調用 setState）
+  useEffect(() => {
+    if (coordinates && !error) {
+      onLocationGranted(coordinates)
+    }
+  }, [coordinates, error, onLocationGranted])
 
   const handleRequest = () => {
     setHasRequested(true)
