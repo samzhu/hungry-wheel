@@ -11,66 +11,92 @@ interface LotteryWheelProps {
 }
 
 /**
- * 籤條 3D 卡片組件
+ * 抽籤階段
+ */
+enum DrawPhase {
+  IDLE = 'idle',           // 待機
+  SHAKING = 'shaking',     // 搖籤筒
+  RISING = 'rising',       // 籤支浮起
+  FLYING = 'flying',       // 飛向鏡頭
+  COMPLETE = 'complete'    // 完成
+}
+
+/**
+ * 籤條 3D 卡片組件（垂直籤支，像真實的竹籤）
  */
 function LotteryStick({
   restaurant,
   position,
-  rotation
+  isSelected = false,
+  phase = DrawPhase.IDLE
 }: {
   restaurant: Restaurant
   position: [number, number, number]
-  rotation: [number, number, number]
+  isSelected?: boolean
+  phase?: DrawPhase
 }) {
-  const meshRef = useRef<THREE.Mesh>(null)
+  const groupRef = useRef<THREE.Group>(null)
   const [hovered, setHovered] = useState(false)
 
   useFrame(() => {
-    if (meshRef.current && hovered) {
-      meshRef.current.scale.lerp(new THREE.Vector3(1.1, 1.1, 1.1), 0.1)
-    } else if (meshRef.current) {
-      meshRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1)
+    if (groupRef.current && hovered && phase === DrawPhase.IDLE) {
+      groupRef.current.position.y = THREE.MathUtils.lerp(
+        groupRef.current.position.y,
+        position[1] + 0.2,
+        0.1
+      )
+    } else if (groupRef.current && !isSelected) {
+      groupRef.current.position.y = THREE.MathUtils.lerp(
+        groupRef.current.position.y,
+        position[1],
+        0.1
+      )
     }
   })
 
+  // 籤支顏色：選中為金色，hover 為粉紅，默認為木色
+  const stickColor = isSelected ? '#fbbf24' : (hovered && phase === DrawPhase.IDLE ? '#f093fb' : '#d4a574')
+
   return (
-    <group position={position} rotation={rotation}>
-      <mesh
-        ref={meshRef}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-      >
-        {/* 籤條主體 */}
-        <boxGeometry args={[2, 0.3, 0.05]} />
+    <group
+      ref={groupRef}
+      position={position}
+      onPointerOver={() => setHovered(true)}
+      onPointerOut={() => setHovered(false)}
+    >
+      {/* 籤支主體（細長圓柱，像竹籤） */}
+      <mesh>
+        <cylinderGeometry args={[0.02, 0.02, 3, 8]} />
         <meshStandardMaterial
-          color={hovered ? '#f093fb' : '#ffffff'}
-          metalness={0.2}
-          roughness={0.4}
+          color={stickColor}
+          metalness={0.1}
+          roughness={0.6}
         />
       </mesh>
 
-      {/* 餐廳名稱文字 */}
-      <Text
-        position={[0, 0, 0.03]}
-        fontSize={0.12}
-        color="#333333"
-        anchorX="center"
-        anchorY="middle"
-        maxWidth={1.8}
-      >
-        {restaurant.name}
-      </Text>
+      {/* 籤支頂部標記（小球） */}
+      <mesh position={[0, 1.5, 0]}>
+        <sphereGeometry args={[0.05, 8, 8]} />
+        <meshStandardMaterial
+          color={isSelected ? '#ef4444' : '#8b4513'}
+          metalness={0.3}
+          roughness={0.5}
+        />
+      </mesh>
 
-      {/* 評分 */}
-      {restaurant.rating && (
+      {/* 餐廳名稱（只在選中時顯示） */}
+      {isSelected && phase !== DrawPhase.IDLE && (
         <Text
-          position={[0, -0.08, 0.03]}
-          fontSize={0.08}
-          color="#f59e0b"
+          position={[0, 2, 0]}
+          fontSize={0.15}
+          color="#ffffff"
           anchorX="center"
           anchorY="middle"
+          maxWidth={2}
+          outlineWidth={0.02}
+          outlineColor="#000000"
         >
-          ⭐ {restaurant.rating.toFixed(1)}
+          {restaurant.name}
         </Text>
       )}
     </group>
@@ -78,162 +104,236 @@ function LotteryStick({
 }
 
 /**
- * 圓柱形籤筒組件
+ * 籤筒組件（包含籤筒和籤支）
  */
-function LotteryCylinder({ radius = 3, height = 4 }) {
-  const cylinderRef = useRef<THREE.Mesh>(null)
-
-  return (
-    <mesh ref={cylinderRef} position={[0, 0, 0]}>
-      <cylinderGeometry args={[radius, radius, height, 32, 1, true]} />
-      <meshStandardMaterial
-        color="#667eea"
-        transparent
-        opacity={0.15}
-        side={THREE.DoubleSide}
-        metalness={0.3}
-        roughness={0.7}
-      />
-    </mesh>
-  )
-}
-
-/**
- * 旋轉的籤條組
- */
-function RotatingSticks({
+function LotteryContainer({
   restaurants,
-  isSpinning,
-  onSpinComplete
+  selectedIndex,
+  phase,
+  onPhaseComplete
 }: {
   restaurants: Restaurant[]
-  isSpinning: boolean
-  onSpinComplete?: () => void
+  selectedIndex: number
+  phase: DrawPhase
+  onPhaseComplete?: (newPhase: DrawPhase) => void
 }) {
-  const groupRef = useRef<THREE.Group>(null)
-  const rotationSpeed = useRef(0.2)
-  const animationData = useRef({ speed: 0.2 })
+  const containerRef = useRef<THREE.Group>(null)
+  const selectedStickRef = useRef<THREE.Group>(null)
 
   useEffect(() => {
-    if (isSpinning && groupRef.current) {
-      console.log('🎲 開始抽籤動畫')
+    if (!containerRef.current) return
 
-      // 重置速度
-      animationData.current.speed = 0.2
-      rotationSpeed.current = 0.2
-
-      // GSAP 動畫：先加速再減速
-      gsap.to(animationData.current, {
-        speed: 10, // 加速到最快
-        duration: 0.5,
-        ease: 'power2.in',
-        onUpdate: () => {
-          rotationSpeed.current = animationData.current.speed
-        },
+    // 階段 1: 搖籤筒
+    if (phase === DrawPhase.SHAKING) {
+      console.log('🔔 開始搖籤筒')
+      const tl = gsap.timeline({
         onComplete: () => {
-          console.log('⚡ 加速完成，開始減速')
-          // 然後減速
-          gsap.to(animationData.current, {
-            speed: 0,
-            duration: 2.5,
-            ease: 'power4.out',
-            onUpdate: () => {
-              rotationSpeed.current = animationData.current.speed
-            },
-            onComplete: () => {
-              console.log('✅ 動畫完成')
-              if (onSpinComplete) {
-                onSpinComplete()
-              }
-            }
-          })
+          console.log('✅ 搖籤筒完成')
+          if (onPhaseComplete) onPhaseComplete(DrawPhase.RISING)
+        }
+      })
+
+      // 左右搖晃 + 前後搖晃（2.5秒）
+      tl.to(containerRef.current.rotation, {
+        x: 0.3,
+        z: 0.2,
+        duration: 0.15,
+        ease: 'power2.inOut',
+        yoyo: true,
+        repeat: 7
+      })
+      tl.to(containerRef.current.rotation, {
+        x: -0.2,
+        z: -0.3,
+        duration: 0.15,
+        ease: 'power2.inOut',
+        yoyo: true,
+        repeat: 7
+      }, '<0.075')
+      // 回正
+      tl.to(containerRef.current.rotation, {
+        x: 0,
+        z: 0,
+        duration: 0.5,
+        ease: 'elastic.out(1, 0.5)'
+      })
+    }
+
+    // 階段 2: 籤支浮起
+    if (phase === DrawPhase.RISING && selectedStickRef.current) {
+      console.log('📤 籤支開始浮起')
+      gsap.to(selectedStickRef.current.position, {
+        y: 3, // 浮到籤筒上方
+        duration: 2,
+        ease: 'power2.out',
+        onComplete: () => {
+          console.log('✅ 籤支浮起完成')
+          if (onPhaseComplete) onPhaseComplete(DrawPhase.FLYING)
         }
       })
     }
-  }, [isSpinning, onSpinComplete])
 
-  useFrame((_state, delta) => {
-    if (groupRef.current) {
-      if (isSpinning && rotationSpeed.current > 0.1) {
-        // 旋轉中
-        groupRef.current.rotation.y += delta * rotationSpeed.current
-      } else if (!isSpinning) {
-        // 閒置時緩慢旋轉
-        groupRef.current.rotation.y += delta * 0.2
-      }
+    // 階段 3: 飛向鏡頭
+    if (phase === DrawPhase.FLYING && selectedStickRef.current) {
+      console.log('🚀 籤支飛向鏡頭')
+      const tl = gsap.timeline({
+        onComplete: () => {
+          console.log('✅ 動畫完成')
+          if (onPhaseComplete) onPhaseComplete(DrawPhase.COMPLETE)
+        }
+      })
+
+      tl.to(selectedStickRef.current.position, {
+        z: 6, // 飛向鏡頭
+        y: 2,
+        duration: 1.2,
+        ease: 'power2.in'
+      })
+      tl.to(selectedStickRef.current.rotation, {
+        y: Math.PI * 2,
+        duration: 1.2,
+        ease: 'power2.in'
+      }, '<')
+      tl.to(selectedStickRef.current.scale, {
+        x: 2,
+        y: 2,
+        z: 2,
+        duration: 1.2,
+        ease: 'power2.in'
+      }, '<')
+    }
+  }, [phase, onPhaseComplete])
+
+  // 閒置時緩慢浮動
+  useFrame(({ clock }) => {
+    if (containerRef.current && phase === DrawPhase.IDLE) {
+      containerRef.current.position.y = Math.sin(clock.getElapsedTime() * 0.5) * 0.1
     }
   })
 
-  const radius = 3
-  const angleStep = (Math.PI * 2) / restaurants.length
+  const cylinderRadius = 1.2
+  const cylinderHeight = 3
+
+  // 將籤支排列在籤筒內（隨機分佈）
+  const sticksPositions = restaurants.map((_, index) => {
+    const angle = (Math.PI * 2 * index) / restaurants.length + Math.random() * 0.5
+    const radius = Math.random() * (cylinderRadius - 0.3)
+    return [
+      Math.cos(angle) * radius,
+      -cylinderHeight / 2 + 0.5, // 在籤筒底部
+      Math.sin(angle) * radius
+    ] as [number, number, number]
+  })
 
   return (
-    <group ref={groupRef}>
-      {restaurants.map((restaurant, index) => {
-        const angle = angleStep * index
-        const x = Math.cos(angle) * radius
-        const z = Math.sin(angle) * radius
+    <group ref={containerRef}>
+      {/* 籤筒主體 */}
+      <mesh position={[0, 0, 0]}>
+        <cylinderGeometry args={[cylinderRadius, cylinderRadius * 0.9, cylinderHeight, 32, 1, true]} />
+        <meshStandardMaterial
+          color="#8b4513"
+          metalness={0.1}
+          roughness={0.8}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
+      {/* 籤筒底部 */}
+      <mesh position={[0, -cylinderHeight / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[cylinderRadius * 0.9, 32]} />
+        <meshStandardMaterial color="#654321" metalness={0.1} roughness={0.9} />
+      </mesh>
+
+      {/* 籤筒裝飾環 */}
+      <mesh position={[0, cylinderHeight / 2 - 0.2, 0]}>
+        <cylinderGeometry args={[cylinderRadius + 0.05, cylinderRadius + 0.05, 0.15, 32]} />
+        <meshStandardMaterial color="#d4af37" metalness={0.8} roughness={0.2} />
+      </mesh>
+      <mesh position={[0, -cylinderHeight / 2 + 0.2, 0]}>
+        <cylinderGeometry args={[cylinderRadius, cylinderRadius, 0.15, 32]} />
+        <meshStandardMaterial color="#d4af37" metalness={0.8} roughness={0.2} />
+      </mesh>
+
+      {/* 所有籤支 */}
+      {restaurants.map((restaurant, index) => {
+        const isSelected = index === selectedIndex
         return (
-          <LotteryStick
+          <group
             key={restaurant.id}
-            restaurant={restaurant}
-            position={[x, 0, z]}
-            rotation={[0, -angle, 0]}
-          />
+            ref={isSelected ? selectedStickRef : undefined}
+          >
+            <LotteryStick
+              restaurant={restaurant}
+              position={sticksPositions[index]}
+              isSelected={isSelected}
+              phase={phase}
+            />
+          </group>
         )
       })}
     </group>
   )
 }
 
+
 /**
  * 3D 場景
  */
 function Scene({
   restaurants,
-  isSpinning,
-  onSpinComplete
+  selectedIndex,
+  phase,
+  onPhaseComplete
 }: {
   restaurants: Restaurant[]
-  isSpinning: boolean
-  onSpinComplete?: () => void
+  selectedIndex: number
+  phase: DrawPhase
+  onPhaseComplete?: (newPhase: DrawPhase) => void
 }) {
   return (
     <>
       {/* 環境光 */}
-      <ambientLight intensity={0.5} />
+      <ambientLight intensity={0.6} />
 
       {/* 主光源 */}
-      <directionalLight position={[10, 10, 5]} intensity={1} />
-      <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+      <directionalLight position={[5, 8, 5]} intensity={1.2} castShadow />
+      <directionalLight position={[-5, 3, -5]} intensity={0.4} />
 
-      {/* 點光源（動態效果） */}
-      <pointLight position={[0, 5, 0]} intensity={0.8} color="#f093fb" />
+      {/* 頂部聚光燈（照亮籤筒） */}
+      <spotLight
+        position={[0, 8, 0]}
+        angle={0.6}
+        penumbra={0.5}
+        intensity={1.5}
+        castShadow
+        color="#fff8dc"
+      />
 
-      {/* 籤筒 */}
-      <LotteryCylinder radius={3} height={4} />
+      {/* 氛圍點光源 */}
+      <pointLight position={[3, 2, 3]} intensity={0.5} color="#f093fb" />
+      <pointLight position={[-3, 2, -3]} intensity={0.5} color="#667eea" />
 
-      {/* 籤條組 */}
-      <RotatingSticks
+      {/* 籤筒容器（包含所有籤支） */}
+      <LotteryContainer
         restaurants={restaurants}
-        isSpinning={isSpinning}
-        onSpinComplete={onSpinComplete}
+        selectedIndex={selectedIndex}
+        phase={phase}
+        onPhaseComplete={onPhaseComplete}
       />
 
       {/* 地面反射 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.5, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.5, 0]} receiveShadow>
         <planeGeometry args={[20, 20]} />
         <MeshReflectorMaterial
           blur={[300, 100]}
           resolution={2048}
           mixBlur={1}
-          mixStrength={40}
+          mixStrength={30}
           roughness={1}
           depthScale={1.2}
           minDepthThreshold={0.4}
           maxDepthThreshold={1.4}
-          color="#151515"
+          color="#1a1a2e"
           metalness={0.5}
         />
       </mesh>
@@ -245,9 +345,10 @@ function Scene({
       <OrbitControls
         enablePan={false}
         enableZoom={true}
-        minDistance={5}
-        maxDistance={15}
-        maxPolarAngle={Math.PI / 2}
+        minDistance={4}
+        maxDistance={12}
+        maxPolarAngle={Math.PI / 2.2}
+        enabled={phase === DrawPhase.IDLE} // 抽籤時禁用控制
       />
     </>
   )
@@ -269,19 +370,29 @@ function LoadingFallback() {
  * 3D 抽籤輪盤主組件
  */
 export const LotteryWheel = ({ restaurants, onDraw }: LotteryWheelProps) => {
-  const [isSpinning, setIsSpinning] = useState(false)
+  const [phase, setPhase] = useState<DrawPhase>(DrawPhase.IDLE)
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
-  const handleSpinComplete = () => {
-    setIsSpinning(false)
-    if (onDraw && restaurants.length > 0) {
-      const randomIndex = Math.floor(Math.random() * restaurants.length)
-      onDraw(restaurants[randomIndex])
+  const handlePhaseComplete = (newPhase: DrawPhase) => {
+    console.log(`📌 階段切換: ${phase} → ${newPhase}`)
+    setPhase(newPhase)
+
+    // 抽籤完成，通知父組件
+    if (newPhase === DrawPhase.COMPLETE && onDraw && restaurants.length > 0) {
+      setTimeout(() => {
+        onDraw(restaurants[selectedIndex])
+      }, 500) // 稍微延遲，讓動畫完整播放
     }
   }
 
-  const handleSpin = () => {
-    setIsSpinning(true)
+  const handleStartDraw = () => {
+    // 隨機選擇一支籤
+    const randomIndex = Math.floor(Math.random() * restaurants.length)
+    setSelectedIndex(randomIndex)
+    setPhase(DrawPhase.SHAKING)
+
+    console.log(`🎯 抽中第 ${randomIndex} 支籤: ${restaurants[randomIndex].name}`)
 
     // 按鈕點擊動畫
     if (buttonRef.current) {
@@ -298,6 +409,26 @@ export const LotteryWheel = ({ restaurants, onDraw }: LotteryWheelProps) => {
     }
   }
 
+  // 獲取按鈕文字
+  const getButtonText = () => {
+    switch (phase) {
+      case DrawPhase.IDLE:
+        return '🙏 開始抽籤'
+      case DrawPhase.SHAKING:
+        return '📳 搖籤中...'
+      case DrawPhase.RISING:
+        return '✨ 籤支浮起...'
+      case DrawPhase.FLYING:
+        return '🎊 揭曉中...'
+      case DrawPhase.COMPLETE:
+        return '✅ 完成'
+      default:
+        return '開始抽籤'
+    }
+  }
+
+  const isDrawing = phase !== DrawPhase.IDLE && phase !== DrawPhase.COMPLETE
+
   return (
     <div className="lottery-wheel-container">
       <Canvas
@@ -308,8 +439,9 @@ export const LotteryWheel = ({ restaurants, onDraw }: LotteryWheelProps) => {
         <Suspense fallback={<LoadingFallback />}>
           <Scene
             restaurants={restaurants}
-            isSpinning={isSpinning}
-            onSpinComplete={handleSpinComplete}
+            selectedIndex={selectedIndex}
+            phase={phase}
+            onPhaseComplete={handlePhaseComplete}
           />
         </Suspense>
       </Canvas>
@@ -317,10 +449,10 @@ export const LotteryWheel = ({ restaurants, onDraw }: LotteryWheelProps) => {
       <button
         ref={buttonRef}
         className="spin-button"
-        onClick={handleSpin}
-        disabled={isSpinning}
+        onClick={handleStartDraw}
+        disabled={isDrawing}
       >
-        {isSpinning ? '抽籤中...' : '開始抽籤'}
+        {getButtonText()}
       </button>
     </div>
   )
