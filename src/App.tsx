@@ -100,7 +100,7 @@ function App() {
                     <div className="restaurants-preview">
                       <h3>附近餐廳列表</h3>
                       <div className="restaurants-grid">
-                        {restaurants.slice(0, 6).map((restaurant, idx) => (
+                        {restaurants.map((restaurant, idx) => (
                           <RestaurantCard
                             key={restaurant.id}
                             restaurant={restaurant}
