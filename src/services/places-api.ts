@@ -1,5 +1,6 @@
 import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 import { Coordinates, Restaurant } from '../types/restaurant'
+import { isPlaceOpenNow, formatOpeningHours } from '../utils/opening-hours'
 
 /**
  * API 初始化狀態
@@ -66,126 +67,169 @@ export class PlacesAPIError extends Error {
 }
 
 /**
- * 搜尋附近餐廳（使用新版 Places API）
+ * 轉換並過濾 Places 資料
+ *
+ * 注意：minRating 和 isOpenNow 已由 API 端過濾，這裡只做基本檢查和資料轉換
+ *
+ * @param places - 待過濾的餐廳列表
+ * @param minRating - 最低評分（已由 API 過濾，這裡僅用於日誌）
+ * @param verbose - 是否輸出詳細日誌
  */
-export const searchNearbyRestaurants = async (
-  location: Coordinates,
-  radius: number = 1500 // 預設 1.5 公里
-): Promise<Restaurant[]> => {
-  // 確保 API 已初始化
-  if (!placesLibrary) {
-    await initGoogleMapsAPI()
+function convertAndFilterPlaces(places: any[], minRating: number, verbose: boolean = true): Restaurant[] {
+  if (verbose && places.length > 0) {
+    console.log(`   過濾條件：評分 ≥ ${minRating} ⭐，營業中`)
   }
 
-  if (!placesLibrary) {
-    throw new PlacesAPIError('INIT_FAILED', 'Places API 初始化失敗')
-  }
+  return places
+    .filter((place) => {
+      const placeName = (place.displayName as any)?.text || place.displayName || '未知店家'
 
-  try {
-    console.log(`🔍 搜尋餐廳：位置 (${location.latitude}, ${location.longitude})，半徑 ${radius}m`)
+      // 必須有 ID、名稱和位置
+      if (!place.id || !place.displayName || !place.location) {
+        if (verbose) console.log(`⏭️ 跳過缺少基本資料的店家：${placeName}`)
+        return false
+      }
 
-    const center = new google.maps.LatLng(location.latitude, location.longitude)
+      // 過濾掉已歇業的店家（臨時或永久關閉）
+      if (place.businessStatus === 'CLOSED_TEMPORARILY' ||
+          place.businessStatus === 'CLOSED_PERMANENTLY') {
+        if (verbose) console.log(`⏭️ 跳過已歇業的店家：${placeName}`)
+        return false
+      }
 
-    // 使用新版 Places API 的 searchNearby 方法
-    const request = {
-      // 必填參數：指定要返回的欄位
-      fields: [
-        'displayName',
-        'location',
-        'id',
-        'formattedAddress',
-        'rating',
-        'userRatingCount',
-        'photos',
-        'types',
-        'businessStatus',
-        'priceLevel',
-        'regularOpeningHours', // 正確：使用 regularOpeningHours 而非 currentOpeningHours
-      ],
-      // 位置限制
-      locationRestriction: {
-        center: center,
-        radius: radius,
+      // API 已經過濾了評分和營業狀態，這裡只做日誌輸出
+      if (verbose) {
+        const rating = place.rating ? `${place.rating} ⭐` : '無評分'
+        console.log(`✅ ${placeName} - ${rating}`)
+      }
+
+      return true
+    })
+    .map((place) => ({
+      id: place.id!,
+      name: (place.displayName as any)?.text || place.displayName || '未命名餐廳',
+      address: place.formattedAddress || '地址未提供',
+      rating: place.rating ?? undefined,
+      userRatingsTotal: place.userRatingCount ?? undefined,
+      photos: place.photos?.map((photo: any) =>
+        photo.getURI({ maxWidth: 400 })
+      ),
+      location: {
+        lat: place.location!.lat(),
+        lng: place.location!.lng(),
       },
-      // 只搜尋餐廳
-      includedPrimaryTypes: ['restaurant'],
-      // 最多返回 20 個結果
-      maxResultCount: 20,
-      // 按照熱門度排序
-      rankPreference: google.maps.places.SearchNearbyRankPreference.POPULARITY,
-      // 語言設定
-      language: 'zh-TW',
-      region: 'TW',
-    }
-
-    const { places } = await google.maps.places.Place.searchNearby(request)
-
-    console.log(`✅ 找到 ${places.length} 家餐廳（含已關閉）`)
-
-    if (!places || places.length === 0) {
-      return []
-    }
-
-    // 轉換為自定義的 Restaurant 類型，並過濾掉已關閉的店家
-    const restaurants: Restaurant[] = places
-      .filter((place) => {
-        // 必須有 ID、名稱和位置
-        if (!place.id || !place.displayName || !place.location) return false
-
-        // 過濾掉已關閉的店家
-        // businessStatus 可能的值：OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY
-        if (place.businessStatus === 'CLOSED_TEMPORARILY' ||
-            place.businessStatus === 'CLOSED_PERMANENTLY') {
-          console.log(`⏭️ 跳過已關閉的店家：${place.displayName}`)
-          return false
-        }
-
-        return true
-      })
-      .map((place) => ({
-        id: place.id!,
-        name: place.displayName || '未命名餐廳',
-        address: place.formattedAddress || '地址未提供',
-        rating: place.rating ?? undefined, // 將 null 轉換為 undefined
-        userRatingsTotal: place.userRatingCount ?? undefined, // 將 null 轉換為 undefined
-        photos: place.photos?.map((photo) =>
-          photo.getURI({ maxWidth: 400 })
-        ),
-        location: {
-          lat: place.location!.lat(),
-          lng: place.location!.lng(),
-        },
-        types: place.types,
-        openingHours: place.regularOpeningHours
-          ? {
-              openNow: undefined, // regularOpeningHours 沒有即時的 isOpen 狀態
-            }
-          : undefined,
-        priceLevel: place.priceLevel !== null && place.priceLevel !== undefined
-          ? Number(place.priceLevel)
-          : undefined, // 將 PriceLevel 枚舉轉換為數字
-      }))
-
-    console.log(`🍽️ 過濾後剩餘 ${restaurants.length} 家營業中的餐廳`)
-
-    return restaurants
-  } catch (error) {
-    console.error('❌ 搜尋餐廳失敗：', error)
-    throw new PlacesAPIError(
-      'SEARCH_FAILED',
-      `搜尋餐廳失敗：${error instanceof Error ? error.message : '未知錯誤'}`
-    )
-  }
+      types: place.types,
+      openingHours: place.regularOpeningHours
+        ? {
+            openNow: isPlaceOpenNow(place.regularOpeningHours),
+            weekdayText: formatOpeningHours(place.regularOpeningHours),
+          }
+        : undefined,
+      priceLevel: place.priceLevel !== null && place.priceLevel !== undefined
+        ? Number(place.priceLevel)
+        : undefined,
+    }))
 }
 
 /**
- * 取得餐廳詳細資訊（使用新版 Places API）
- * 注意：在新版 API 中，searchNearby 已經返回了大部分資料，
- * 此函數主要用於需要額外詳細資訊時使用
+ * 漸進式多策略搜索餐廳
+ * 策略順序：
+ * 1. 4 星以上 1 公里內
+ * 2. 3 星以上 1 公里內
+ * 3. 4 星以上 1.5 公里內
+ * 4. 3 星以上 1.5 公里內
  */
-export const getPlaceDetails = async (
-  placeId: string
-): Promise<any> => {
+export const searchNearbyRestaurantsWithProgressiveStrategy = async (
+  location: Coordinates,
+  targetCount: number = 20 // 目標餐廳數量
+): Promise<Restaurant[]> => {
+  console.log(`\n${'='.repeat(60)}`)
+  console.log(`🎯 開始漸進式搜索`)
+  console.log(`${'='.repeat(60)}`)
+  console.log(`📍 位置：(${location.latitude}, ${location.longitude})`)
+  console.log(`🎲 目標：${targetCount} 家餐廳`)
+  console.log(`📋 策略：4⭐1km → 3⭐1km → 4⭐1.5km → 3⭐1.5km`)
+
+  // 定義搜索策略
+  const strategies = [
+    { rating: 4.0, radius: 1000, name: '4⭐ 1km內' },
+    { rating: 3.0, radius: 1000, name: '3⭐ 1km內' },
+    { rating: 4.0, radius: 1500, name: '4⭐ 1.5km內' },
+    { rating: 3.0, radius: 1500, name: '3⭐ 1.5km內' },
+  ]
+
+  const restaurantMap = new Map<string, Restaurant>() // 使用 Map 自動去重（key = 餐廳 ID）
+  let strategyIndex = 0
+
+  for (const strategy of strategies) {
+    strategyIndex++
+    console.log(`\n${'='.repeat(60)}`)
+    console.log(`📋 策略 ${strategyIndex}/${strategies.length}: ${strategy.name}`)
+    console.log(`   條件：評分 ≥ ${strategy.rating} ⭐、半徑 ${strategy.radius}m、營業中`)
+    console.log(`   目前籤筒：${restaurantMap.size} 家`)
+
+    try {
+      // 執行搜索
+      const results = await searchWithSingleStrategy(location, strategy.radius, strategy.rating)
+
+      // 合併結果並去重
+      let newCount = 0
+      const newRestaurants: string[] = []
+      for (const restaurant of results) {
+        if (!restaurantMap.has(restaurant.id)) {
+          restaurantMap.set(restaurant.id, restaurant)
+          newCount++
+          newRestaurants.push(restaurant.name)
+        }
+      }
+
+      console.log(`   ✅ API 返回：${results.length} 家，新增：${newCount} 家（已去重：${results.length - newCount} 家）`)
+
+      // 如果有新增餐廳，顯示前 3 家
+      if (newCount > 0 && newRestaurants.length > 0) {
+        const preview = newRestaurants.slice(0, 3).join('、')
+        const more = newRestaurants.length > 3 ? ` 等 ${newRestaurants.length} 家` : ''
+        console.log(`   📝 新增：${preview}${more}`)
+      }
+
+      console.log(`   📊 籤筒總計：${restaurantMap.size} 家`)
+
+      // 如果已達到目標數量，停止搜索
+      if (restaurantMap.size >= targetCount) {
+        console.log(`\n🎉 已達到目標！籤筒內有 ${restaurantMap.size} 家餐廳`)
+        break
+      }
+    } catch (error) {
+      console.error(`   ❌ 策略 ${strategyIndex} 執行失敗：`, error)
+      // 繼續執行下一個策略
+    }
+  }
+
+  console.log(`\n${'='.repeat(60)}`)
+  console.log(`🍽️  最終結果：${restaurantMap.size} 家符合條件的餐廳`)
+  console.log(`${'='.repeat(60)}`)
+
+  // 輸出餐廳清單
+  const restaurants = Array.from(restaurantMap.values())
+  console.log('\n📋 餐廳清單：')
+  restaurants.forEach((restaurant, idx) => {
+    const rating = restaurant.rating ? `${restaurant.rating} ⭐` : '無評分'
+    const status = restaurant.openingHours?.openNow ? '✅ 營業中' : '❓ 未知'
+    console.log(`${String(idx + 1).padStart(2, ' ')}. ${restaurant.name} - ${rating} ${status}`)
+  })
+  console.log(`${'='.repeat(60)}\n`)
+
+  return restaurants
+}
+
+/**
+ * 執行單一策略的搜索
+ */
+async function searchWithSingleStrategy(
+  location: Coordinates,
+  radius: number,
+  minRating: number
+): Promise<Restaurant[]> {
   if (!placesLibrary) {
     await initGoogleMapsAPI()
   }
@@ -194,33 +238,46 @@ export const getPlaceDetails = async (
     throw new PlacesAPIError('INIT_FAILED', 'Places API 初始化失敗')
   }
 
-  try {
-    const place = new google.maps.places.Place({
-      id: placeId,
-    })
-
-    // 請求額外的詳細資訊
-    await place.fetchFields({
-      fields: [
-        'displayName',
-        'formattedAddress',
-        'nationalPhoneNumber',
-        'rating',
-        'userRatingCount',
-        'regularOpeningHours', // 正確：使用 regularOpeningHours
-        'photos',
-        'priceLevel',
-        'websiteURI',
-        'reviews',
-      ],
-    })
-
-    return place
-  } catch (error) {
-    console.error('❌ 取得餐廳詳細資訊失敗：', error)
-    throw new PlacesAPIError(
-      'DETAILS_FAILED',
-      `取得餐廳詳細資訊失敗：${error instanceof Error ? error.message : '未知錯誤'}`
-    )
+  const request = {
+    textQuery: '餐廳',
+    fields: [
+      'displayName',
+      'location',
+      'id',
+      'formattedAddress',
+      'rating',
+      'userRatingCount',
+      'photos',
+      'types',
+      'businessStatus',
+      'priceLevel',
+      'regularOpeningHours',
+    ],
+    includedType: 'restaurant',
+    // 使用 locationBias 搭配 circle（優先返回指定半徑內的餐廳）
+    // 注意：JavaScript API 不支援 locationRestriction with circle，只支援 locationBias
+    locationBias: {
+      center: {
+        lat: location.latitude,
+        lng: location.longitude
+      },
+      radius: radius  // 單位：公尺
+    } as any,  // TypeScript 類型定義未完整，使用 any 繞過
+    // API 原生過濾參數 - 減少傳輸數據量和 client-side 處理
+    minRating: minRating,    // 最低評分（API 端過濾）
+    isOpenNow: true,          // 只返回目前營業中的店家（API 端過濾）
+    maxResultCount: 20,
+    language: 'zh-TW',
+    region: 'TW',
   }
+
+  const { places } = await google.maps.places.Place.searchByText(request)
+
+  if (!places || places.length === 0) {
+    return []
+  }
+
+  // API 已經過濾了評分和營業狀態，這裡只需要簡單轉換
+  return convertAndFilterPlaces(places, minRating, false)
 }
+

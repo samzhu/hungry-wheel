@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Coordinates, Restaurant } from '../types/restaurant'
 import {
-  searchNearbyRestaurants,
+  searchNearbyRestaurantsWithProgressiveStrategy,
   PlacesAPIError,
   initGoogleMapsAPI,
 } from '../services/places-api'
@@ -67,8 +67,12 @@ export const useRestaurants = (
       // 初始化 Google Maps API
       await initGoogleMapsAPI()
 
-      // 搜尋附近餐廳
-      const results = await searchNearbyRestaurants(location, radius)
+      // 使用漸進式多策略搜索餐廳
+      // 策略：1.4星1km → 2.3星1km → 3.4星1.5km → 4.3星1.5km
+      const results = await searchNearbyRestaurantsWithProgressiveStrategy(
+        location,  // 位置
+        20         // 目標數量：20 家
+      )
 
       setState({
         restaurants: results,
